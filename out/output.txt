@@ -1,0 +1,6 @@
+INFO:root:Reading in data
+INFO:root:Choosing events
+INFO:root:Manually calculating HR in bpm
+INFO:root:Normalizing each respondent to their level in baseline
+INFO:root:Plotting EDA
+INFO:root:Plotting HR

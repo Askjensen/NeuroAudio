@@ -1,0 +1,4 @@
+INFO:root:Reading in data
+INFO:root:Choosing events
+INFO:root:Normalizing to baseline
+INFO:root:Plotting
