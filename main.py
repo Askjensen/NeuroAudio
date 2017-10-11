@@ -24,7 +24,7 @@ if __name__ == '__main__':
     logging.debug(df)
 
     #logging.info('Handling r-peak distance (must be between 600 and 1200 ms cite: Psycho.book')
-    #df=functions.HRFilter(df, respondents)
+    #df=functions.HRFilter(df, respondents) - needs corrections
 
     logging.info('Manually calculating HR in bpm')
     dftest = heartbeat.calcHeartbeat(df.ix[:,['position',EKG_data,'tag__info_StudioEventData']],respondents)
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     dftest=functions.norm2baseline(dftest,respondents,HR_data)
 
     logging.info('Plotting EDA')
-    plotting.plot_sequence(df,respondents,Events,eda_data,phasic=True)
+    plotting.plot_sequence(df,respondents,Events,eda_data,phasic=True)  
     #plotting.plot_total(df,respondents,Events,eda_data)
 
     logging.info('Plotting HR')

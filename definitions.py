@@ -18,8 +18,8 @@ delimiter = ';'
 #folder_path ='C:/Data/RadioNeuro/RadioHR/alle/'
 #folder_path ='C:/Data/RadioNeuro/250917_radionyhederP4/datasæt/test/'
 #folder_path ='C:/Data/RadioNeuro/250917_radionyhederP4/datasæt/gode/'
-#folder_path ='C:/Data/RadioNeuro/250917_radionyhederP4/datasæt/godeHR/'
-folder_path ='C:/Data/RadioNeuro/250917_radionyhederP4/datasæt/alle/'
+folder_path ='C:/Data/RadioNeuro/250917_radionyhederP4/datasæt/godeHR/'
+#folder_path ='C:/Data/RadioNeuro/250917_radionyhederP4/datasæt/alle/'
 #folder_path = 'C:/data/RadioNeuro/test/smoothed/'
 #C:\Data\Bankerotdata
 filename_ext = '.txt'
@@ -39,7 +39,7 @@ minpeakdistance=545 #ms,600~100bmp 545 ~ 110 BPM, 500 corresponding to 120 BPM, 
 maxpeakdistance=1500 #ms, corresponding to 40 BPM
 #baseline_seq = 'Baseline 1'
 baseline_seq = 'Pre_Klokken08.avi'
-
+constanttoadd=100
 
 #phasic modelling
 bgiter = 10 # the number of interations for finding background - this is highly influences timescale granularity. The higher the number the lower the smoother (and lower) the background estimate.

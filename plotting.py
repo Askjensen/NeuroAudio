@@ -1,3 +1,4 @@
+import math
 import matplotlib.pyplot as plt
 import seaborn as sns, pandas as pd
 import functions, definitions
@@ -17,44 +18,39 @@ def plot_sequence(df,respondents,Events,variable,phasic=False):
         summed_df['position'] = (summed_df['position'] - summed_df['position'].min())/1000.
         maxbin = int(summed_df['position'].max()/2)*2
         summed_df = summed_df.set_index('position')
+        ax = summed_df.plot(cmap=sns.cubehelix_palette(as_cmap=True), label="first", legend=True, title=evt + variable)
+
         if variable == definitions.eda_data:
             # add constant to avoid negative values:
-            summed_df[variable] = summed_df[variable] + 100
+            #summed_df[variable] = summed_df[variable] + definitions.constanttoadd
             # normalise to an integral of 1:
-            summed_df[variable] = summed_df[variable] / summed_df[variable].sum()
-        ax = summed_df.plot(cmap=sns.cubehelix_palette(as_cmap=True),label="first",legend=True, title=evt+variable)
-        #max is per sequence and first bin is set to zero, so that max i length of given sequence
+            #summed_df[variable] = summed_df[variable] / summed_df[variable].sum()
+            #max is per sequence and first bin is set to zero, so that max i length of given sequence
 
-        rawedahist = TH1F("rawedahist", "sum of normalized EDA per sequence", maxbin+1, 0, maxbin)
-        phasichist = TH1F("phasichist", "phasic part per sequence", maxbin+1, 0, maxbin)
-        tonichist = TH1F("tonichist", "tonic part per sequence", maxbin+1, 0, maxbin)
-        # make sure errors are sum of squares of weights - wwell actually dont as hists are 'added'
-        #phasichist.Sumw2()
-        #tonichist.Sumw2()
+            if phasic:
+                rawedahist = TH1F("rawedahist", "sum of normalized EDA per sequence", maxbin+1, 0, maxbin)
+                rawedahistentries = TH1F("rawedahistentries", "rawedahistentries", maxbin+1, 0, maxbin)
+                phasichist = TH1F("phasichist", "phasic part per sequence", maxbin+1, 0, maxbin)
+                tonichist = TH1F("tonichist", "tonic part per sequence", maxbin+1, 0, maxbin)
+                # make sure errors are sum of squares of weights - well actually dont as hists are 'added'
+                #phasichist.Sumw2()
+                #tonichist.Sumw2()
 
-        if phasic:
-            print len(summed_df[variable])
-            for ix in summed_df.index:
-                rawedahist.Fill(ix, summed_df[variable][ix])
-                rawedahist.GetXaxis().SetRangeUser(summed_df.index[1],summed_df.index[-2])
-            # add constant to handle negative values. BSS calibrates EDA signal but can introduce a systematic error that sets the lowest arrousal level as negative.
-            for i in range(0, rawedahist.GetNbinsX()):
-                rawedahist.SetBinContent(i, rawedahist.GetBinContent(i) + 100)
-            rawedahist.Scale(1./rawedahist.Integral())
-            s = TSpectrum()
-            #cmark = TCanvas("c", "c", 1200, 800)
-            #cmark.cd()
-            #phasichist.Draw()
-
-            #np = s.Search(phasichist, definitions.sigmapeaksinterval, "noMarkov same nobackground", definitions.peakamplitude)
-            bg = s.Background(rawedahist, definitions.bgiter, "Compton same")
-            #cmark.Update()
-            #cmark.SaveAs('./out/PhasicModelling_'+respondents[0]+'_'+evt+'_respondents.png')
-            #cmark.SaveAs('./out/PhasicModelling_'+respondents[0]+'_'+evt+'_respondents.root')
-            #cmark.Close()
-            tonichist.Add(bg)
-            phasichist.Add(rawedahist)
-            phasichist.Add(bg, -1)
+                for ix in summed_df.index:
+                    rawedahist.Fill(ix, summed_df[variable][ix])
+                    rawedahistentries.Fill(ix)
+                for ix in range(rawedahist.GetNbinsX()+1):
+                    # add constant to avoid negative values:
+                    content = rawedahist.GetBinContent(ix)/rawedahistentries.GetBinContent(ix) if rawedahistentries.GetBinContent(ix)>0 else 0
+                    rawedahist.SetBinContent(ix,content+definitions.constanttoadd)
+                # rawedahist.GetXaxis().SetRangeUser(summed_df.index[1],summed_df.index[-2])
+                # normalise to an integral of 1:
+                rawedahist.Scale(1./rawedahist.Integral())
+                s = TSpectrum()
+                bg = s.Background(rawedahist, definitions.bgiter, "Compton same")
+                tonichist.Add(bg)
+                phasichist.Add(rawedahist)
+                phasichist.Add(bg, -1)
 
         #loop over respondents
         if len(respondents) > 1:
@@ -66,38 +62,71 @@ def plot_sequence(df,respondents,Events,variable,phasic=False):
                 df1.plot(label=respondents[i].decode('latin'), ax=ax,legend=True, title=evt+variable)#, c=i/len(respondents))
                 #resp=respondents[i]
                 if phasic:
-                    hist = TH1F("loophist", "loophisthist", maxbin+1, 0, maxbin)
-                    for ix in df1.index:
-                        hist.Fill(ix, df1[variable][ix])
-                    # add constant to handle negative values. BSS calibrates EDA signal but can introduce a systematic error that sets the lowest arrousal level as negative.
-                    for ix in range(0, hist.GetNbinsX()):
-                        hist.SetBinContent(i, hist.GetBinContent(ix) + 100)
-                    hist.Scale(1./hist.Integral())
-                    cmark = TCanvas("c", "c", 1200, 800)
-                    cmark.cd()
-                    hist.Draw()
-                    s = TSpectrum()
-                    np = s.Search(hist, definitions.sigmapeaksinterval, "noMarkov same nobackground", definitions.peakamplitude)
-                    bg = s.Background(hist, definitions.bgiter, "Compton same")
-                    cmark.Update()
-                    cmark.SaveAs('./out/respondents/PhasicModelling_'+respondents[i]+'_'+evt+'_respondents.png')
-                    cmark.SaveAs('./out/respondents/PhasicModelling_'+respondents[i]+'_'+evt+'_respondents.root')
-                    rawedahist.Add(hist)
-                    tonichist.Add(bg)
-                    hist.Add(bg,-1)
-                    phasichist.Add(hist)
-                    #phasichist.Draw()
-                    #cmark.Update()
-                    #cmark.Close()
-                    cmark.Close()
-                    del hist
-                    #cmark.Close()
-                    if variable==definitions.eda_data:
+                    if variable == definitions.eda_data:
+                        hist = TH1F("loophist", "loophisthist", maxbin+1, 0, maxbin)
+                        histunweighted = TH1F("loophist", "loophisthist", maxbin+1, 0, maxbin)
+                        # add constant to avoid negative values:
+                        #df1[variable] = df1[variable] + definitions.constanttoadd
+                        # normalise to an integral of 1:
+                        #df1[variable] = df1[variable] / df1[variable].sum()
+                        for ix in df1.index:
+                            hist.Fill(ix, df1[variable][ix])
+                            histunweighted.Fill(ix)
+                        for ix in range(hist.GetNbinsX()+1):
+                            # add constant to avoid negative values:
+                            content = hist.GetBinContent(ix)/histunweighted.GetBinContent(ix) if histunweighted.GetBinContent(ix)>0 else 0
+                            hist.SetBinContent(ix,content+definitions.constanttoadd)
+                        '''
+                        # add constant to handle negative values. BSS calibrates EDA signal but can introduce a systematic error that sets the lowest arrousal level as negative.
+                        #print hist.Integral()
+                        #print df1.head()
+                        lastcontent=hist.GetBinContent(0) / histunweighted.GetBinContent(0)  if histunweighted.GetBinContent(0)>0 else 0
+                        for ix in range(hist.GetNbinsX()+1):
+                            #print ix
+                            #print hist.GetBinContent(ix)
+                            print ix
+                            print 'ix above, bincontent and entries:'
+                            print hist.GetBinContent(ix)
+                            print histunweighted.GetBinContent(ix)
+                            content = hist.GetBinContent(ix) / histunweighted.GetBinContent(ix) if histunweighted.GetBinContent(ix)>0 else 0
+                            print 'content:' + str(content)
+                            print 'lastcontent:' + str(lastcontent)
+                            if ix < hist.GetNbinsX()-1:
+                                nextcontent = hist.GetBinContent(ix+1) / histunweighted.GetBinContent(ix+1) if histunweighted.GetBinContent(ix+1)>0 else 0
+                            if lastcontent != 0  and math.fabs(content - lastcontent)/math.fabs(lastcontent)>0.2 and content > lastcontent and content > nextcontent:
+                                test=0
+                            lastcontent = hist.GetBinContent(ix) / histunweighted.GetBinContent(ix) if histunweighted.GetBinContent(ix)>0 else 0
+
+                            hist.SetBinContent(i, content)
+                        '''
+                        hist.Scale(1./hist.Integral())
+                        #print hist.Integral()
+                        cmark = TCanvas("c", "c", 1200, 800)
+                        cmark.cd()
+                        hist.Draw()
+                        s = TSpectrum()
+                        np = s.Search(hist, definitions.sigmapeaksinterval, "noMarkov same nobackground", definitions.peakamplitude)
+                        bg = s.Background(hist, definitions.bgiter, "Compton same")
+                        cmark.Update()
+                        cmark.SaveAs('./out/respondents/PhasicModelling_'+respondents[i]+'_'+evt+'_respondents.png')
+                        cmark.SaveAs('./out/respondents/PhasicModelling_'+respondents[i]+'_'+evt+'_respondents.root')
+                        rawedahist.Add(hist)
+                        tonichist.Add(bg)
+                        hist.Add(bg,-1)
+                        phasichist.Add(hist)
+                        #phasichist.Draw()
+                        #cmark.Update()
+                        #cmark.Close()
+                        cmark.Close()
+                        del hist
+                        #cmark.Close()
+
                         #add constant to avoid negative values:
-                        df1[variable] = df1[variable]+100
+                        #df1[variable] = df1[variable] + definitions.constanttoadd
                         #normalise to an integral of 1:
-                        df1[variable] = df1[variable]/df1[variable].sum()
+                        #df1[variable] = df1[variable]/df1[variable].sum()
                 summed_df = summed_df.add(df1, fill_value=0)
+        summed_df[variable] = summed_df[variable]/len(respondents)
         test=0
         if phasic:
             cmark = TCanvas("c", "c", 1200, 800)
@@ -163,28 +192,28 @@ def plot_sequence(df,respondents,Events,variable,phasic=False):
         #from https://stackoverflow.com/questions/23709403/plotting-profile-hitstograms-in-python
         plt.close()
 
-        if variable==definitions.eda_data:
-            #3 sec bins
-            fig1, ax_sum = plt.subplots(nrows=1)
-            functions.Profile(x=summed_df.index.values,y=summed_df[variable].values,nbins=int(summed_df.index.max()/3),xmin=summed_df.index.min(),xmax=summed_df.index.max(),ax=ax_sum,variable=variable)
-            #fig = ax_sum.get_figure()
-            fig1.set_size_inches(40, 10, forward=True)
-            fig1.savefig('./out/'+variable + evt + '_summed_3secbins.png')
+        #if variable==definitions.eda_data:
+        #3 sec bins
+        fig1, ax_sum = plt.subplots(nrows=1)
+        functions.Profile(x=summed_df.index.values,y=summed_df[variable].values,nbins=int(summed_df.index.max()/3),xmin=summed_df.index.min(),xmax=summed_df.index.max(),ax=ax_sum,variable=variable)
+        #fig = ax_sum.get_figure()
+        fig1.set_size_inches(40, 10, forward=True)
+        fig1.savefig('./out/'+variable + evt + '_summed_3secbins.png')
 
-            #summed_df[variable] = summed_df[variable].mean()
-            #ax_mean = summed_df.plot(cmap=sns.cubehelix_palette(as_cmap=True), title=evt, legend=True)
-            #fig = ax_mean.get_figure()
-            #fig.savefig('./out/'+variable + evt + '_average.png')
-            plt.close()
+        #summed_df[variable] = summed_df[variable].mean()
+        #ax_mean = summed_df.plot(cmap=sns.cubehelix_palette(as_cmap=True), title=evt, legend=True)
+        #fig = ax_mean.get_figure()
+        #fig.savefig('./out/'+variable + evt + '_average.png')
+        plt.close()
 
-            # 10 sec bins
-            fig1, ax_sum = plt.subplots(nrows=1)
-            functions.Profile(x=summed_df.index.values, y=summed_df[variable].values, nbins=int(summed_df.index.max() / 10),
-                              xmin=summed_df.index.min(), xmax=summed_df.index.max(), ax=ax_sum, variable=variable)
-            # fig = ax_sum.get_figure()
-            fig1.set_size_inches(40, 10, forward=True)
-            fig1.savefig('./out/' + variable + evt + '_summed_10secbins.png')
-            plt.close()
+        # 10 sec bins
+        fig1, ax_sum = plt.subplots(nrows=1)
+        functions.Profile(x=summed_df.index.values, y=summed_df[variable].values, nbins=int(summed_df.index.max() / 10),
+                          xmin=summed_df.index.min(), xmax=summed_df.index.max(), ax=ax_sum, variable=variable)
+        # fig = ax_sum.get_figure()
+        fig1.set_size_inches(40, 10, forward=True)
+        fig1.savefig('./out/' + variable + evt + '_summed_10secbins.png')
+        plt.close()
 
         fig1, ax_sum = plt.subplots(nrows=1)
         functions.Profile(x=summed_df.index.values, y=summed_df[variable].values, nbins=int(summed_df.index.max()),
@@ -192,6 +221,24 @@ def plot_sequence(df,respondents,Events,variable,phasic=False):
         # fig = ax_sum.get_figure()
         fig1.set_size_inches(40, 10, forward=True)
         fig1.savefig('./out/' + variable + evt + '_summed.png')
+
+        maxbin = int(summed_df.index.max())
+        minbin = int(summed_df.index.min())
+        variablehist = TH1F("variablehist", "variablehist", int(maxbin - minbin), minbin, maxbin)
+        variablehistentries = TH1F("variablehistentries", "variablehistentries", int(maxbin - minbin), minbin, maxbin)
+        for ind in summed_df.index:
+            variablehist.Fill(ind, summed_df[variable][ind])
+            variablehistentries.Fill(ind)
+        for ibin in range(variablehist.GetNbinsX()+1):
+            content = variablehist.GetBinContent(ibin) / variablehistentries.GetBinContent(ibin) if variablehistentries.GetBinContent(ibin) >0 else 0
+            variablehistentries.SetBinContent(ibin,content)
+        cmark = TCanvas("c", "c", 1200, 800)
+        cmark.cd()
+        variablehist.Draw()
+        cmark.Update()
+        variablehist.SaveAs('./out/' + variable + evt + '_summed.root')
+        cmark.SaveAs('./out/' + variable + evt + '_summedcanvas.root')
+        del variablehist
         # summed_df[variable] = summed_df[variable].mean()
         # ax_mean = summed_df.plot(cmap=sns.cubehelix_palette(as_cmap=True), title=evt, legend=True)
         # fig = ax_mean.get_figure()
@@ -256,33 +303,33 @@ def plot_total(df, respondents, Events,variable):
     #fig.savefig('./out/'+variable+'Total_length_average.png')
     plt.close()
     del fig
-    if variable == definitions.eda_data:
-        fig, ax_sum = plt.subplots(nrows=1)
-        functions.Profile(x=master_df.index.values, y=master_df[variable].values, nbins=int(master_df.index.max()/3),
-                          xmin=master_df.index.min(), xmax=master_df.index.max(), ax=ax_sum, variable=variable)
-        # fig = ax_sum.get_figure()
-        ##fig.set_size_inches(40, 10, forward=True)
-        # fig.savefig('./out/'+variable+'Total_length_summed.png')
-        # ax_sum = sns.regplot(x=master_df.index.values, y=master_df[variable].values, x_bins=master_df.index.max(), fit_reg=None)
-        fig = ax_sum.get_figure()
-        fig.set_size_inches(40, 10, forward=True)
-        fig.savefig('./out/' + variable + '_Total_length_summed_3secbins.png')
-        fig, ax_sum = plt.subplots(nrows=1)
-        functions.Profile(x=master_df.index.values, y=master_df[variable].values, nbins=int(master_df.index.max() / 10),
-                          xmin=master_df.index.min(), xmax=master_df.index.max(), ax=ax_sum, variable=variable)
-        # fig = ax_sum.get_figure()
-        ##fig.set_size_inches(40, 10, forward=True)
-        # fig.savefig('./out/'+variable+'Total_length_summed.png')
-        # ax_sum = sns.regplot(x=master_df.index.values, y=master_df[variable].values, x_bins=master_df.index.max(), fit_reg=None)
-        fig = ax_sum.get_figure()
-        fig.set_size_inches(40, 10, forward=True)
-        fig.savefig('./out/' + variable + '_Total_length_summed_10secbins.png')
-        # master_df[variable] = master_df[variable].mean()
-        # ax_mean = master_df.plot(kind='area', label="first", legend=True,stacked=False)
-        # fig = ax_mean.get_figure()
-        # fig.savefig('./out/'+variable+'Total_length_average.png')
-        plt.close()
-        del fig
+    #if variable == definitions.eda_data:
+    fig, ax_sum = plt.subplots(nrows=1)
+    functions.Profile(x=master_df.index.values, y=master_df[variable].values, nbins=int(master_df.index.max()/3),
+                      xmin=master_df.index.min(), xmax=master_df.index.max(), ax=ax_sum, variable=variable)
+    # fig = ax_sum.get_figure()
+    ##fig.set_size_inches(40, 10, forward=True)
+    # fig.savefig('./out/'+variable+'Total_length_summed.png')
+    # ax_sum = sns.regplot(x=master_df.index.values, y=master_df[variable].values, x_bins=master_df.index.max(), fit_reg=None)
+    fig = ax_sum.get_figure()
+    fig.set_size_inches(40, 10, forward=True)
+    fig.savefig('./out/' + variable + '_Total_length_summed_3secbins.png')
+    fig, ax_sum = plt.subplots(nrows=1)
+    functions.Profile(x=master_df.index.values, y=master_df[variable].values, nbins=int(master_df.index.max() / 10),
+                      xmin=master_df.index.min(), xmax=master_df.index.max(), ax=ax_sum, variable=variable)
+    # fig = ax_sum.get_figure()
+    ##fig.set_size_inches(40, 10, forward=True)
+    # fig.savefig('./out/'+variable+'Total_length_summed.png')
+    # ax_sum = sns.regplot(x=master_df.index.values, y=master_df[variable].values, x_bins=master_df.index.max(), fit_reg=None)
+    fig = ax_sum.get_figure()
+    fig.set_size_inches(40, 10, forward=True)
+    fig.savefig('./out/' + variable + '_Total_length_summed_10secbins.png')
+    # master_df[variable] = master_df[variable].mean()
+    # ax_mean = master_df.plot(kind='area', label="first", legend=True,stacked=False)
+    # fig = ax_mean.get_figure()
+    # fig.savefig('./out/'+variable+'Total_length_average.png')
+    plt.close()
+    del fig
 
 def plotHR(measures):
     # Plot
@@ -328,9 +375,8 @@ def plotter(dataset, title,measures,iresp):
     try:
         maxbin = int(max(dataset.index))
         minbin = int(min(dataset.index))
-        datahist = TH1F("datahist", "datahist", int(maxbin-minbin), minbin, maxbin)
-        datahist
-        ybeathist = TH1F("ybeathist", "ybeathist", int(maxbin-minbin), 0, int(maxbin-minbin))
+        datahist = TH1F("datahist", "datahist", int(maxbin-minbin)+1, 0, int(maxbin-minbin))
+        ybeathist = TH1F("ybeathist", "ybeathist", int(maxbin-minbin)+1, 0, int(maxbin-minbin))
         for i in range(len(measures['peaklist'])):
             ybeathist.Fill(measures['peaklist'][i], measures['ybeat'][i])
         for i in range(len(dataset.index)):
