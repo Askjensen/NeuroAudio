@@ -15,7 +15,13 @@ def norm2baseline(df,respondents,variable):
         summed_df = df.loc[iresp]
         try:
             bl_mean_EDA = summed_df.loc[summed_df['tag__info_StudioEventData'] == definitions.baseline_seq][[variable]].values.mean()
+            #bl_min_EDA = summed_df.loc[summed_df['tag__info_StudioEventData'] == definitions.baseline_seq][[variable]].values.min()
+            #bl_mean_EDA = bl_mean_EDA if bl_mean_EDA>0 else bl_mean_EDA*(-1.0)
+            #if df.loc[iresp][variable] < bl_mean_EDA:
+            #    print bl_mean_EDA
+            #    print df.loc[iresp][variable]
             dfvar = df.loc[iresp][variable] - bl_mean_EDA
+            #print dfvar
             vardf = pd.concat([vardf, dfvar])
         except KeyError as e:
             print 'There was a problem with the specified key/index - make sure they match the columns in the input dataset (ECG or EKG or EDA/GSR etc)'
